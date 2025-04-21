@@ -4,12 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "ts-node src/server.ts",
-    "clean": "pnpm store prune && rm -rf node_modules pnpm-lock.yaml && pnpm install"
-  },
+    "start:simple": "node dist/server.js",
+    "dev:simple": "nodemon src/server.ts",
+    "serve": "node --require ./dist/env.js dist/server.js",
+    "start": "npm run serve:prod",
+    "start:dev": "cross-env NODE_ENV=development node --require ./dist/env.js dist/server.js",
+    "start:prod": "cross-env NODE_ENV=production node --require ./dist/env.js dist/server.js",
+    "dev": "concurrently \"tsc -w\" \"cross-env NODE_ENV=development nodemon --watch dist --require ./dist/env.js dist/server.js\"",
+    "clean": "pnpm store prune && rm -rf node_modules pnpm-lock.yaml && pnpm install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },  
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -26,11 +31,15 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "multer": "1.4.5-lts.2",
+    "cloudinary": "^2.6.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
-    "@types/jsonwebtoken": "^9.0.9"
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.12",
+    "cross-env": "^7.0.3"
   }
 }
