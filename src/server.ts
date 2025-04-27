@@ -1,4 +1,3 @@
-// src/server.ts
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -10,9 +9,12 @@ import orderRoutes from "./routes/orderRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import cartRoutes from "./routes/cartRoutes";
 
+import { expirePendingOrders } from "./services/orderService";
+
 // Config Imports
 // Assumes env.ts is run first via --require flag in package.json
 import { getConfig } from "./config";
+import { v2 as cloudinary } from "cloudinary";
 
 // --- Load and Validate Configuration ---
 let config;
@@ -31,6 +33,13 @@ try {
   console.log(`[Server] Config - FRONTEND_URL: ${config.FRONTEND_URL}`);
   console.log(`[Server] Config - API_KEY: Loaded`);
   console.log(`[Server] Config - WEBSITE_WALLET: Loaded`);
+
+  // Configure Cloudinary
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 } catch (error) {
   console.error("🔴 FATAL ERROR: Failed to load or validate configuration.");
   console.error(error instanceof Error ? error.message : error);
@@ -74,17 +83,32 @@ console.log("[Server] API routes set up.");
 console.log(`[Server] Attempting to connect to MongoDB at ${config.MONGO_URI ? "URI provided" : "URI MISSING!"}`);
 mongoose
   .connect(config.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    // Start HTTP Server
+    const PORT = config.PORT;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT} [${config.NODE_ENV}]`);
+      // Run expirePendingOrders every 5 minutes
+      const intervalMinutes = 5;
+      const intervalMs = intervalMinutes * 60 * 1000;
+      setInterval(async () => {
+        console.log("[Server] Running expirePendingOrders");
+        try {
+          const modifiedCount = await expirePendingOrders();
+          console.log(`[Server] Successfully expired ${modifiedCount} pending orders`);
+        } catch (error) {
+          console.error("[Server] Failed to expire pending orders:", error);
+        }
+      }, intervalMs);
+      console.log(`[Server] Scheduled expirePendingOrders to run every ${intervalMinutes} minutes`);
+    });
+  })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1); // Exit if DB connection fails on startup
   });
 // --- End Database Connection ---
-
-// --- Start HTTP Server ---
-const PORT = config.PORT;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT} [${config.NODE_ENV}]`));
-// --- End Start Server ---
 
 // Optional: Add global error handler, unhandled rejection/exception handlers
 process.on("unhandledRejection", (reason, promise) => {

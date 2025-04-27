@@ -1,11 +1,14 @@
 // src/routes/productRoutes.ts
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
-import multer from "multer";
+import multer, { FileFilterCallback } from "multer";
 import Product, { IProduct } from "../models/Product";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate, restrictTo } from "../middleware/auth";
 import { uploadImage, deleteImage } from "../controllers/productImageController";
+import { getConfig } from "../config";
+
+const config = getConfig();
 
 interface ProductRequestBody {
   name: string;
@@ -28,7 +31,16 @@ interface AuthenticatedRequest<
 
 const router = express.Router();
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed") as any, false); // Type assertion to bypass TS2345
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: config.MAX_IMAGE_SIZE_MB * 1024 * 1024 }, // 25MB limit
+});
 
 // Get all products
 router.get(
@@ -192,7 +204,7 @@ router.post(
   "/:id/images",
   authenticate,
   restrictTo("seller", "admin"),
-  upload.single("image"),
+  upload.array("images", 6),
   uploadImage
 );
 

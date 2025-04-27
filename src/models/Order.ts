@@ -10,7 +10,7 @@ export interface IOrder extends Document {
   user: mongoose.Types.ObjectId;
   products: IOrderProduct[];
   total: number; // Total in USDC, SOL, or Pi based on paymentMethod
-  status: "pending" | "completed" | "cancelled";
+  status: "pending" | "completed" | "cancelled" | "failed";
   paymentMethod: "usdc" | "solana" | "pi";
   paymentSignature?: string;
   createdAt: Date;
@@ -27,7 +27,7 @@ const orderSchema = new Schema<IOrder>(
       },
     ],
     total: { type: Number, required: true, min: 0 },
-    status: { type: String, enum: ["pending", "completed", "cancelled"], default: "pending" },
+    status: { type: String, enum: ["pending", "completed", "cancelled", "failed"], default: "pending" },
     paymentMethod: { type: String, enum: ["usdc", "solana", "pi"], required: true },
     paymentSignature: { type: String },
   },
