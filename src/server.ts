@@ -23,14 +23,14 @@ try {
   // Log non-sensitive config values for confirmation
   console.log(`[Server] Config - NODE_ENV: ${config.NODE_ENV}`);
   console.log(`[Server] Config - PORT: ${config.PORT}`);
-  console.log(`[Server] Config - MONGO_URI: Loaded`); // Verified by getConfig
-  console.log(`[Server] Config - JWT_SECRET: Loaded & Validated`); // Verified by getConfig
-  console.log(`[Server] Config - CLOUDINARY_CLOUD_NAME: Loaded`); // Verified by getConfig
+  console.log(`[Server] Config - MONGO_URI: Loaded`);
+  console.log(`[Server] Config - JWT_SECRET: Loaded & Validated`);
+  console.log(`[Server] Config - CLOUDINARY_CLOUD_NAME: Loaded`);
   console.log(`[Server] Config - SOLANA_NETWORK: ${config.SOLANA_NETWORK}`);
   console.log(`[Server] Config - SOLANA_RPC_URL: ${config.SOLANA_RPC_URL}`);
   console.log(`[Server] Config - FRONTEND_URL: ${config.FRONTEND_URL}`);
-  console.log(`[Server] Config - API_KEY: Loaded`); // Verified by getConfig
-  console.log(`[Server] Config - WEBSITE_WALLET: Loaded`); // Verified by getConfig
+  console.log(`[Server] Config - API_KEY: Loaded`);
+  console.log(`[Server] Config - WEBSITE_WALLET: Loaded`);
 } catch (error) {
   console.error("🔴 FATAL ERROR: Failed to load or validate configuration.");
   console.error(error instanceof Error ? error.message : error);
@@ -41,20 +41,28 @@ try {
 // --- Initialize Express App ---
 const app = express();
 console.log("[Server] Setting up middleware...");
-// Enable CORS - Configure allowed origins from config in production
-app.use(cors(/* { origin: config.FRONTEND_URL } */)); // Example using FRONTEND_URL
+// Enable CORS - Configure allowed origins
+const allowedOrigins = [config.FRONTEND_URL, "http://localhost:4173"];
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., mobile apps or curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+  })
+);
 // Enable JSON body parsing
 app.use(express.json());
 console.log("[Server] Middleware set up.");
 // --- End Middleware Setup ---
 
 // --- Setup API Routes ---
-// Optional: Add API Key middleware if needed for all routes or specific ones
-// const apiKeyMiddleware = (req, res, next) => { ... check config.API_KEY ... };
-// app.use('/api', apiKeyMiddleware); // Apply to all /api routes
-
 console.log("[Server] Setting up API routes...");
-app.use("/api/auth", userRoutes); // Changed from /api/users to /api/auth
+app.use("/api/auth", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
@@ -63,9 +71,9 @@ console.log("[Server] API routes set up.");
 // --- End Route Setup ---
 
 // --- Database Connection ---
-console.log(`[Server] Attempting to connect to MongoDB at ${config.MONGO_URI ? 'URI provided' : 'URI MISSING!'}`);
+console.log(`[Server] Attempting to connect to MongoDB at ${config.MONGO_URI ? "URI provided" : "URI MISSING!"}`);
 mongoose
-  .connect(config.MONGO_URI) // Use MONGO_URI from the validated config object
+  .connect(config.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
@@ -74,16 +82,16 @@ mongoose
 // --- End Database Connection ---
 
 // --- Start HTTP Server ---
-const PORT = config.PORT; // Use PORT from the validated config object
+const PORT = config.PORT;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT} [${config.NODE_ENV}]`));
 // --- End Start Server ---
 
 // Optional: Add global error handler, unhandled rejection/exception handlers
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
   process.exit(1); // Mandatory exit after uncaught exception
 });

@@ -4,10 +4,12 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IProduct extends Document {
   name: string;
   description: string;
-  price: number;
+  price: number;    // Price in USDC
+  solPrice: number; // Price in SOL
+  piPrice: number;  // Price in Pi
   stock: number;
   seller: mongoose.Types.ObjectId;
-  images?: { url: string; publicId: string }[]; // Array of image objects
+  images?: { url: string; publicId: string }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +19,8 @@ const productSchema = new Schema<IProduct>(
     name: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: [0, "Price cannot be negative"] },
+    solPrice: { type: Number, required: true, min: [0, "Solana price cannot be negative"] },
+    piPrice: { type: Number, required: true, min: [0, "Pi price cannot be negative"] },
     stock: {
       type: Number,
       required: true,

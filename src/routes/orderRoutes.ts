@@ -1,64 +1,86 @@
 // src/routes/orderRoutes.ts
-import express from "express";
-import { Request, Response } from "express";
-import { authenticate, restrictTo } from "../middleware/auth";
-import Order from "../models/Order"; // Assuming Order model handles population types correctly
+import express, { Request, Response } from "express";
+import mongoose from "mongoose";
+import Order from "../models/Order";
+import Cart from "../models/Cart";
+import { asyncHandler } from "../utils/asyncHandler";
+import { authenticate } from "../middleware/auth";
 
-// Remove the local AuthenticatedRequest interface
+interface OrderRequestBody {
+  products: { product: string; quantity: number }[];
+  total: number;
+  paymentMethod: "usdc" | "solana" | "pi";
+}
+
+interface AuthenticatedRequest extends Request<{}, {}, OrderRequestBody> {
+  user?: { id: string; roles: string[] };
+}
 
 const router = express.Router();
 
-// POST / - Create Order (Might need authentication depending on your logic)
-router.post("/", authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
+router.post(
+  "/",
+  authenticate,
+  asyncHandler<AuthenticatedRequest>(async (req: AuthenticatedRequest, res: Response) => {
     const { products, total, paymentMethod } = req.body;
+    const userId = req.user?.id;
 
-    // Ensure user is attached by authenticate middleware
-    if (!req.user || !req.user.id) {
-        res.status(401).json({ message: "Authentication required to create an order." });
+    if (!userId) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
+    }
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      res.status(400).json({ message: "Products array is required." });
+      return;
+    }
+    if (!total || typeof total !== "number" || total <= 0) {
+      res.status(400).json({ message: "Invalid total amount." });
+      return;
+    }
+    if (!["usdc", "solana", "pi"].includes(paymentMethod)) {
+      res.status(400).json({ message: "Invalid payment method." });
+      return;
+    }
+
+    for (const item of products) {
+      if (!mongoose.Types.ObjectId.isValid(item.product)) {
+        res.status(400).json({ message: `Invalid product ID: ${item.product}` });
         return;
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+        res.status(400).json({ message: `Invalid quantity for product ${item.product}` });
+        return;
+      }
     }
 
     const order = new Order({
-      user: req.user.id, // Use the authenticated user's ID
+      user: userId,
       products,
       total,
       paymentMethod,
+      status: "pending",
     });
     await order.save();
+
+    await Cart.findOneAndUpdate({ user: userId }, { items: [] });
+
     res.status(201).json(order);
-  } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(500).json({ message: "Failed to create order" });
-  }
-});
+  })
+);
 
-// GET /my-orders - Get user's orders
-router.get("/my-orders", authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
-    // req.user is guaranteed by authenticate middleware if it calls next()
-    // Non-null assertion (!) is okay here, or add another check if paranoid.
-    if (!req.user) {
-        res.status(401).json({ message: "Authentication required." });
-        return;
+router.get(
+  "/",
+  authenticate,
+  asyncHandler<AuthenticatedRequest>(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Authentication required." });
+      return;
     }
-    const orders = await Order.find({ user: req.user.id }).populate("products.product");
-    res.json(orders);
-  } catch (error) {
-    console.error("Error fetching user orders:", error);
-    res.status(500).json({ message: "Failed to retrieve orders" });
-  }
-});
 
-// GET / - Get all orders (Admin only)
-router.get("/", authenticate, restrictTo("admin"), async (req: Request, res: Response): Promise<void> => {
-  try {
-    const orders = await Order.find().populate("user products.product");
+    const orders = await Order.find({ user: userId }).populate("products.product");
     res.json(orders);
-  } catch (error) {
-    console.error("Error fetching all orders:", error);
-    res.status(500).json({ message: "Failed to retrieve all orders" });
-  }
-});
+  })
+);
 
 export default router;
