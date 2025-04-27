@@ -8,6 +8,7 @@ import userRoutes from "./routes/userRoutes";
 import productRoutes from "./routes/productRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import cartRoutes from "./routes/cartRoutes";
 
 // Config Imports
 // Assumes env.ts is run first via --require flag in package.json
@@ -30,11 +31,10 @@ try {
   console.log(`[Server] Config - FRONTEND_URL: ${config.FRONTEND_URL}`);
   console.log(`[Server] Config - API_KEY: Loaded`); // Verified by getConfig
   console.log(`[Server] Config - WEBSITE_WALLET: Loaded`); // Verified by getConfig
-
 } catch (error) {
-    console.error("🔴 FATAL ERROR: Failed to load or validate configuration.");
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1); // Exit if config loading/validation fails
+  console.error("🔴 FATAL ERROR: Failed to load or validate configuration.");
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1); // Exit if config loading/validation fails
 }
 // --- End Configuration Loading ---
 
@@ -48,31 +48,30 @@ app.use(express.json());
 console.log("[Server] Middleware set up.");
 // --- End Middleware Setup ---
 
-
 // --- Setup API Routes ---
 // Optional: Add API Key middleware if needed for all routes or specific ones
 // const apiKeyMiddleware = (req, res, next) => { ... check config.API_KEY ... };
 // app.use('/api', apiKeyMiddleware); // Apply to all /api routes
 
 console.log("[Server] Setting up API routes...");
-app.use("/api/users", userRoutes);
+app.use("/api/auth", userRoutes); // Changed from /api/users to /api/auth
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/cart", cartRoutes);
 console.log("[Server] API routes set up.");
 // --- End Route Setup ---
 
-
 // --- Database Connection ---
 console.log(`[Server] Attempting to connect to MongoDB at ${config.MONGO_URI ? 'URI provided' : 'URI MISSING!'}`);
-mongoose.connect(config.MONGO_URI) // Use MONGO_URI from the validated config object
+mongoose
+  .connect(config.MONGO_URI) // Use MONGO_URI from the validated config object
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => {
-      console.error("❌ MongoDB connection error:", err);
-      process.exit(1); // Exit if DB connection fails on startup
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1); // Exit if DB connection fails on startup
   });
 // --- End Database Connection ---
-
 
 // --- Start HTTP Server ---
 const PORT = config.PORT; // Use PORT from the validated config object
