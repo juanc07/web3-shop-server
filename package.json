@@ -13,6 +13,8 @@
     "start:prod": "cross-env NODE_ENV=production node --require ./dist/env.js dist/server.js",
     "dev": "concurrently \"tsc -w\" \"cross-env NODE_ENV=development nodemon --watch dist --require ./dist/env.js dist/server.js\"",
     "clean": "pnpm store prune && rm -rf node_modules pnpm-lock.yaml && pnpm install",
+    "create-ata": "cross-env NODE_ENV=development node --require ./dist/env.js dist/scripts/create-ata.js",
+    "migrateProduct": "cross-env NODE_ENV=development node --require ./dist/env.js dist/scripts/migrateProduct.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,11 +23,12 @@
   "packageManager": "pnpm@10.5.2",
   "dependencies": {
     "@solana/spl-token": "^0.4.13",
-    "@solana/web3.js": "^1.98.0",
+    "@solana/web3.js": "^1.98.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.14.1",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
+    "bs58": "^6.0.0",
     "cloudinary": "^2.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
